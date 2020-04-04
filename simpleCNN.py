@@ -23,14 +23,68 @@ from keras.utils import to_categorical
 # print(train_images.shape) # (60000, 28, 28, 1)
 # print(test_images.shape)  # (10000, 28, 28, 1)
 
+class NinaproDB:
+    winSize = 25
+    overlap = 0
+
+    def __init__(self):
+
+        return
+
+    def read(self, file):
+        dataset = loadmat(file)
+        signal   = dataset['emg']
+        labels   = dataset['restimulus']
+        subject  = dataset['subject']
+        exercise = dataset['exercise']
+
+        # Divide signal into time windows
+        # length = (len(signal) // winSize) * winSize
+
+        step = self.winSize - self.overlap
+        # self.windows = [signal[i : i + self.winSize] for i in range(0, len(signal), step)]
+        # if (self.windows[-1].shape != self.windows[1].shape) :
+        #     del self.windows[-1]
+
+        # self.windows = []
+        # self.classes = []
+        for start in range(0, len(signal) - self.winSize, step):
+            end = start + self.winSize
+
+            if labels[start] == labels[end-1]:
+                self.windows.append(signal[start:end])
+                self.classes.append(labels[start])
+
+        # classes = []
+        # for i in range(len(windows)):
+        #   if
+        #   classes.appened()
+
+
+
+## IMPORT DATA ##
 from scipy.io import loadmat
-x = loadmat('S7_A1_E1.mat')
-emg = x['emg']
-stm = x['restimulus']
+dataset = loadmat('S7_A1_E1.mat')
+emg = dataset['emg']
+stm = dataset['restimulus']
 
 print(emg.shape)
 print(stm.shape)
 
+print(type(emg))
+print(type(stm))
+
+DB = NinaproDB();
+DB.read('S7_A1_E1.mat')
+
+print(len(DB.windows))
+print(DB.windows[-1].shape)
+
+DB.windows = np.array(DB.windows)
+print(DB.windows.shape)
+
+
+## CREATE NETWORK ##
 num_filters = 8
 filter_size = 3
 pool_size = 2
@@ -55,18 +109,18 @@ print(model)
 #compile model using accuracy to measure model performance
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Train the model.
+## TRAIN THE MODEL.##
 model.fit(
-  train_images,
-  to_categorical(train_labels),
-  epochs=3,
-  validation_data=(test_images, to_categorical(test_labels)),
+    train_images,
+    to_categorical(train_labels),
+    epochs=3,
+    validation_data=(test_images, to_categorical(test_labels)),
 )
 
 
 # Save/Load weights
-model.save_weights('cnn.h5')
-model.load_weights('cnn.h5')
+# model.save_weights('cnn.h5')
+# model.load_weights('cnn.h5')
 
 
 # Predict on the first 5 test images.
