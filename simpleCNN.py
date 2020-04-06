@@ -7,7 +7,7 @@ from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Dense, Flatten
 from keras.utils import to_categorical
 
-# train_images = mnist.train_images()
+# train_images = mnist.train_images(-)
 # train_labels = mnist.train_labels()
 # test_images = mnist.test_images()
 # test_labels = mnist.test_labels()
@@ -23,20 +23,51 @@ from keras.utils import to_categorical
 # print(train_images.shape) # (60000, 28, 28, 1)
 # print(test_images.shape)  # (10000, 28, 28, 1)
 
+def isListEmpty(inList):
+        if isinstance(inList, list): # Is a list
+            return all( map(isListEmpty, inList) )
+        return False # Not a list
+
 class NinaproDB:
     winSize = 25
     overlap = 0
 
     def __init__(self):
-
+        #                               gestures             reps                 subjects            exercises
+        self.Data = [ [ [ [ [] for i in range(13) ] for i in range(11) ] for i in range(64)] for i in range(3)]
         return
+
+    def __str__(self):
+        gesCount = [0 for i in range(13)]
+        subCount = 0
+
+        for exe in self.Data:
+            for sub in exe:
+                if not isListEmpty(sub):
+                    subCount += 1
+                    for rep in sub:
+                        for ges in range(len(rep)):
+                            gesCount[ges] += len(rep[ges])
+
+        string = "%d %s \n" % (subCount, 'subject' if subCount==1 else 'subjects')
+        string += "%d windows total\n" % sum(gesCount)
+        for ges in gesCount:
+            string += "Gesture %d - %d windows\n" % (gesCount.index(ges), ges)
+        return string
 
     def read(self, file):
         dataset = loadmat(file)
-        signal   = dataset['emg']
-        labels   = dataset['restimulus']
-        subject  = dataset['subject']
-        exercise = dataset['exercise']
+        signal = dataset['emg']
+        labels = dataset['restimulus']
+        exe    = dataset['exercise']
+        sub    = dataset['subject']
+        rep    = dataset['rerepetition']
+
+        print(labels[0][0])
+        print(exe[0][0])
+        print(sub[0][0])
+        print(rep[0][0])
+
 
         # Divide signal into time windows
         # length = (len(signal) // winSize) * winSize
@@ -46,19 +77,19 @@ class NinaproDB:
         # if (self.windows[-1].shape != self.windows[1].shape) :
         #     del self.windows[-1]
 
-        # self.windows = []
-        # self.classes = []
         for start in range(0, len(signal) - self.winSize, step):
             end = start + self.winSize
-
             if labels[start] == labels[end-1]:
-                self.windows.append(signal[start:end])
-                self.classes.append(labels[start])
+                self.Data[exe[0][0]-1][sub[0][0]-1][rep[start][0]-1][labels[start][0]].append(signal[start:end])
 
-        # classes = []
-        # for i in range(len(windows)):
-        #   if
-        #   classes.appened()
+            # print(start)
+            # print(end)
+            # print(exe[0][0])
+            # print(sub[0][0])
+            # print(rep[start][0])
+            # print(labels[start][0])
+            # print()
+
 
 
 
@@ -71,17 +102,14 @@ stm = dataset['restimulus']
 print(emg.shape)
 print(stm.shape)
 
-print(type(emg))
-print(type(stm))
-
 DB = NinaproDB();
 DB.read('S7_A1_E1.mat')
 
-print(len(DB.windows))
-print(DB.windows[-1].shape)
 
-DB.windows = np.array(DB.windows)
-print(DB.windows.shape)
+print(DB)
+
+# DB.windows = np.array(DB.windows)
+# print(DB.windows.shape)
 
 
 ## CREATE NETWORK ##
