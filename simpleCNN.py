@@ -4,8 +4,12 @@ print("IT'S WORKING!!!")
 import keras
 # import mnist
 from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, Dense, Flatten
+from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Dense, Flatten
 from keras.utils import to_categorical
+
+from scipy.io import loadmat
+
+import matplotlib.pyplot as plt
 
 # train_images = mnist.train_images(-)
 # train_labels = mnist.train_labels()
@@ -24,8 +28,9 @@ from keras.utils import to_categorical
 # print(test_images.shape)  # (10000, 28, 28, 1)
 
 def isListEmpty(inList):
-        if isinstance(inList, list): # Is a list
-            return all( map(isListEmpty, inList) )
+# Checks if a list consists only of Empty nested lists
+        if isinstance(inList, list): # Is a list (returns false if empty)???
+            return all(map(isListEmpty, inList))
         return False # Not a list
 
 class NinaproDB:
@@ -33,6 +38,7 @@ class NinaproDB:
     overlap = 0
 
     def __init__(self):
+        # Created nested lists to store database
         #                               gestures             reps                 subjects            exercises
         self.Data = [ [ [ [ [] for i in range(13) ] for i in range(11) ] for i in range(64)] for i in range(3)]
         return
@@ -80,7 +86,10 @@ class NinaproDB:
         for start in range(0, len(signal) - self.winSize, step):
             end = start + self.winSize
             if labels[start] == labels[end-1]:
+#PLS FIX#
                 self.Data[exe[0][0]-1][sub[0][0]-1][rep[start][0]-1][labels[start][0]].append(signal[start:end])
+# [0] are to turn a for some reason nested list into a scalar
+# -1  is for converting to 0 indexing
 
             # print(start)
             # print(end)
@@ -91,45 +100,93 @@ class NinaproDB:
             # print()
 
 
+    def prepareData(self, ratio):
+        TrainX = []
+        TrainY = []
+        ValidX = []
+        ValidY = []
+        # Data = self.Data[:][:][:][1][:]
+        count = 0
+        for exe in self.Data:
+            if not isListEmpty(exe):
+                for sub in exe:
+                    if not isListEmpty(sub):
+                        for rep in sub:
+                            for ges, num in zip(rep, range(len(rep))):
+                                if not num == 0:
+                                    length = len(ges)
 
+                                    middle = int(length * ratio)
+
+                                    TrainX.extend(ges[middle:]) # |middle_____:
+                                    ValidX.extend(ges[:middle]) # :____ |middle
+                                    TrainY.extend( [num] * (length - middle) )
+                                    ValidY.extend( [num] * middle )
+
+
+        #                             TX = (ges[middle:]) # |middle_____:
+        #                             VX = (ges[:middle]) # :____ |middle
+        #                             TY = ( [num] * (length - middle) )
+        #                             VY = ( [num] * middle )
+
+        #                             Sets = [TX,TY,VX,VY]
+        #                             [TX,TY,VX,VY]=list(map(len, Sets)) # get lengths
+        #                             if (TX == TY) and (VX == VY) and \
+        #                                (length == TX + VX) and (length == TY + VY):
+        #                                 print('all good in the hood')
+        #                                 count += 1
+        #                             else:
+        #                                 print('OH HELL NAHH!')
+        # print(count)
+        return [TrainX, TrainY , ValidX, ValidY]
 
 ## IMPORT DATA ##
-from scipy.io import loadmat
-dataset = loadmat('S7_A1_E1.mat')
-emg = dataset['emg']
-stm = dataset['restimulus']
 
-print(emg.shape)
-print(stm.shape)
 
-DB = NinaproDB();
-DB.read('S7_A1_E1.mat')
-
+DB = NinaproDB()
+DB.read('S1_A1_E1.mat')
+DB.read('S2_A1_E1.mat')
 
 print(DB)
 
-# DB.windows = np.array(DB.windows)
-# print(DB.windows.shape)
+[TrainX, TrainY , ValidX, ValidY] = DB.prepareData(0.3)
+print(list(map(len, [TrainX, TrainY , ValidX, ValidY])))
+
+TrainX = [np.expand_dims(x, axis=2) for x in TrainX]
+TrainX = np.stack(TrainX, axis=0 )
+
+ValidX = [np.expand_dims(x, axis=2) for x in ValidX]
+ValidX = np.stack(ValidX, axis=0 )
+
+print(TrainX[0].shape)
+print(set(ValidY))
+
 
 
 ## CREATE NETWORK ##
 num_filters = 8
 filter_size = 3
 pool_size = 2
-num_classes = 10
+num_classes = 13
 
 model = Sequential()
-model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
-                 activation='relu',
-                 input_shape=(28, 28, 1)))
-model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+# model.add(Conv2D(32, kernel_size=(5, 5), strides=1,
+#                  activation='relu',
+#                  input_shape=(25, 10, 1), data_format="channels_last"))
+# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
-model.add(Conv2D(64, (5, 5), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
+# model.add(Conv2D(64, (5, 5), activation='relu'))
+# model.add(MaxPooling2D(pool_size=(2, 2)))
 
+# model.add(Flatten())
+# model.add(Dense(1000, activation='relu'))
+
+# model.add(Dense(num_classes, activation='softmax'))
+
+model.add(Conv2D(32, kernel_size=(1,10), activation='relu', input_shape=(25,10,1), padding='same'))
+model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same'))
+model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same'))
 model.add(Flatten())
-model.add(Dense(1000, activation='relu'))
-
 model.add(Dense(num_classes, activation='softmax'))
 
 print(model)
@@ -139,10 +196,11 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 
 ## TRAIN THE MODEL.##
 model.fit(
-    train_images,
-    to_categorical(train_labels),
+    TrainX,
+    to_categorical(TrainY),
     epochs=3,
-    validation_data=(test_images, to_categorical(test_labels)),
+    validation_data=(ValidX, to_categorical(ValidY)),
+    shuffle=True
 )
 
 
@@ -152,12 +210,25 @@ model.fit(
 
 
 # Predict on the first 5 test images.
-predictions = model.predict(test_images[:5])
+predictions = np.argmax(model.predict(ValidX), axis=1)
 
 # Print our model's predictions.
-print(np.argmax(predictions, axis=1)) # [7, 2, 1, 0, 4]
+print('Predictions:\t', predictions[:20]) # [7, 2, 1, 0, 4]
 
 # Check our predictions against the ground truths.
-print(test_labels[:5]) # [7, 2, 1, 0, 4]
+print('Answers:\t\t', ValidY[:20]) # [7, 2, 1, 0, 4]
 
+correct = predictions[ValidY==predictions]
 
+print('Unique (pred):\t\t', set(predictions))
+print('Unique (correct):\t', set(correct))
+
+plt.subplot(122)
+plt.hist(predictions, bins=11)  # arguments are passed to np.histogram
+print(np.histogram(predictions, bins=11))
+plt.title('Predictions')
+
+plt.subplot(121)
+plt.hist(correct, bins=11)  # arguments are passed to np.histogram
+plt.title('Correct')
+plt.show()
