@@ -1,31 +1,15 @@
 import numpy as np
 print("IT'S WORKING!!!")
-# import tensorflow
 import keras
-# import mnist
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Dense, Flatten
 from keras.utils import to_categorical
 
 from scipy.io import loadmat
+import os
+import re
 
 import matplotlib.pyplot as plt
-
-# train_images = mnist.train_images(-)
-# train_labels = mnist.train_labels()
-# test_images = mnist.test_images()
-# test_labels = mnist.test_labels()
-
-# # Normalize the images.
-# train_images = (train_images / 255) - 0.5
-# test_images = (test_images / 255) - 0.5
-
-# # Reshape the images.
-# train_images = np.expand_dims(train_images, axis=3)
-# test_images = np.expand_dims(test_images, axis=3)
-
-# print(train_images.shape) # (60000, 28, 28, 1)
-# print(test_images.shape)  # (10000, 28, 28, 1)
 
 def isListEmpty(inList):
 # Checks if a list consists only of Empty nested lists
@@ -38,6 +22,7 @@ class NinaproDB:
     overlap = 0
 
     def __init__(self):
+        ## PLZ PLZ PLZ FIX ##
         # Created nested lists to store database
         #                               gestures             reps                 subjects            exercises
         self.Data = [ [ [ [ [] for i in range(13) ] for i in range(11) ] for i in range(64)] for i in range(3)]
@@ -61,19 +46,24 @@ class NinaproDB:
             string += "Gesture %d - %d windows\n" % (gesCount.index(ges), ges)
         return string
 
+    def readDataBase(self, folder, subject, exercise):
+        subjects  = r'\d' if subject == 'all' else str(subject).replace(', ', '')
+        exercises = r'\d' if exercise == 'all' else str(exercise).replace(', ', '')
+        match = r'\AS{}_.*E{}.*\.mat\Z'.format(subjects, exercises)
+
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                if re.search(match, file):
+                     self.read(os.path.join(root, file))
+
     def read(self, file):
+        print('Reading: %s', file)
         dataset = loadmat(file)
         signal = dataset['emg']
         labels = dataset['restimulus']
         exe    = dataset['exercise']
         sub    = dataset['subject']
         rep    = dataset['rerepetition']
-
-        print(labels[0][0])
-        print(exe[0][0])
-        print(sub[0][0])
-        print(rep[0][0])
-
 
         # Divide signal into time windows
         # length = (len(signal) // winSize) * winSize
@@ -123,29 +113,14 @@ class NinaproDB:
                                     TrainY.extend( [num] * (length - middle) )
                                     ValidY.extend( [num] * middle )
 
-
-        #                             TX = (ges[middle:]) # |middle_____:
-        #                             VX = (ges[:middle]) # :____ |middle
-        #                             TY = ( [num] * (length - middle) )
-        #                             VY = ( [num] * middle )
-
-        #                             Sets = [TX,TY,VX,VY]
-        #                             [TX,TY,VX,VY]=list(map(len, Sets)) # get lengths
-        #                             if (TX == TY) and (VX == VY) and \
-        #                                (length == TX + VX) and (length == TY + VY):
-        #                                 print('all good in the hood')
-        #                                 count += 1
-        #                             else:
-        #                                 print('OH HELL NAHH!')
-        # print(count)
         return [TrainX, TrainY , ValidX, ValidY]
 
 ## IMPORT DATA ##
 
 
 DB = NinaproDB()
-DB.read('S1_A1_E1.mat')
-DB.read('S2_A1_E1.mat')
+DB.readDataBase('../Ninapro database/Database 1/', 'all', '1')
+
 
 print(DB)
 
@@ -160,7 +135,6 @@ ValidX = np.stack(ValidX, axis=0 )
 
 print(TrainX[0].shape)
 print(set(ValidY))
-
 
 
 ## CREATE NETWORK ##
@@ -183,9 +157,23 @@ model = Sequential()
 
 # model.add(Dense(num_classes, activation='softmax'))
 
-model.add(Conv2D(32, kernel_size=(1,10), activation='relu', input_shape=(25,10,1), padding='same'))
-model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same'))
-model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same'))
+## PAPER 2 ##
+# model.add(Conv2D(32, kernel_size=(1,10), activation='relu', input_shape=(25,10,1), padding='same'))
+# model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same'))
+# model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same'))
+# model.add(Conv2D(64, kernel_size=(5,1), activation='relu', padding='same'))
+# model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same'))
+# model.add(Conv2D(64, kernel_size=1, activation='relu', padding='same'))
+# model.add(Flatten())
+# model.add(Dense(num_classes, activation='softmax'))
+
+## PAPER 3 ##
+model.add(Conv2D(32, kernel_size=3, activation='relu', input_shape=(25,10,1), padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+
+model.add(Conv2D(64, kernel_size=3, activation='relu', padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+
 model.add(Flatten())
 model.add(Dense(num_classes, activation='softmax'))
 
@@ -223,12 +211,12 @@ correct = predictions[ValidY==predictions]
 print('Unique (pred):\t\t', set(predictions))
 print('Unique (correct):\t', set(correct))
 
-plt.subplot(122)
-plt.hist(predictions, bins=11)  # arguments are passed to np.histogram
-print(np.histogram(predictions, bins=11))
-plt.title('Predictions')
+# plt.subplot(122)
+# plt.hist(predictions, bins=11)  # arguments are passed to np.histogram
+# print(np.histogram(predictions, bins=11))
+# plt.title('Predictions')
 
-plt.subplot(121)
-plt.hist(correct, bins=11)  # arguments are passed to np.histogram
-plt.title('Correct')
-plt.show()
+# plt.subplot(121)
+# plt.hist(correct, bins=11)  # arguments are passed to np.histogram
+# plt.title('Correct')
+# plt.show()
