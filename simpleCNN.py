@@ -1,5 +1,5 @@
+print("At least the script starts...")
 import numpy as np
-print("IT'S WORKING!!!")
 import keras
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Dense, Flatten
@@ -10,6 +10,8 @@ import os
 import re
 
 import matplotlib.pyplot as plt
+
+from datetime import datetime
 
 def isListEmpty(inList):
 # Checks if a list consists only of Empty nested lists
@@ -49,7 +51,7 @@ class NinaproDB:
     def readDataBase(self, folder, subject, exercise):
         subjects  = r'\d' if subject == 'all' else str(subject).replace(', ', '')
         exercises = r'\d' if exercise == 'all' else str(exercise).replace(', ', '')
-        match = r'\AS{}_.*E{}.*\.mat\Z'.format(subjects, exercises)
+        match = r'\AS{}+_.*E{}.*\.mat\Z'.format(subjects, exercises)
 
         for root, dirs, files in os.walk(folder):
             for file in files:
@@ -119,7 +121,7 @@ class NinaproDB:
 
 
 DB = NinaproDB()
-DB.readDataBase('../Ninapro database/Database 1/', 'all', '1')
+DB.readDataBase(r'C:\Users\Mark\Downloads\Datbase 1', 'all', '1')
 
 
 print(DB)
@@ -160,19 +162,20 @@ model = Sequential()
 ## PAPER 2 ##
 # model.add(Conv2D(32, kernel_size=(1,10), activation='relu', input_shape=(25,10,1), padding='same'))
 # model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same'))
+# # model.add(AveragePooling2D(pool_size=(3,3)))
 # model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same'))
+# # model.add(AveragePooling2D(pool_size=(3,3)))
 # model.add(Conv2D(64, kernel_size=(5,1), activation='relu', padding='same'))
-# model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same'))
 # model.add(Conv2D(64, kernel_size=1, activation='relu', padding='same'))
 # model.add(Flatten())
 # model.add(Dense(num_classes, activation='softmax'))
 
 ## PAPER 3 ##
 model.add(Conv2D(32, kernel_size=3, activation='relu', input_shape=(25,10,1), padding='same'))
-model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
 model.add(Conv2D(64, kernel_size=3, activation='relu', padding='same'))
-model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
 model.add(Flatten())
 model.add(Dense(num_classes, activation='softmax'))
@@ -180,21 +183,25 @@ model.add(Dense(num_classes, activation='softmax'))
 print(model)
 
 #compile model using accuracy to measure model performance
+optimizer = keras.optimizers.SGD(learning_rate=0.001, momentum=0.9)
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 ## TRAIN THE MODEL.##
 model.fit(
     TrainX,
     to_categorical(TrainY),
-    epochs=3,
+    epochs=30,
+    batch_size=128,
     validation_data=(ValidX, to_categorical(ValidY)),
     shuffle=True
 )
 
 
 # Save/Load weights
-# model.save_weights('cnn.h5')
-# model.load_weights('cnn.h5')
+# datetime object containing current date and time
+now = datetime.now()
+dt_string = now.strftime("%d_%m_%Y_%H_%M")
+model.save_weights('%s.h5' % dt_string)
 
 
 # Predict on the first 5 test images.
