@@ -49,9 +49,9 @@ class NinaproDB:
         return string
 
     def readDataBase(self, folder, subject, exercise):
-        subjects  = r'\d' if subject == 'all' else str(subject).replace(', ', '')
+        subjects  = r'\d+' if subject == 'all' else str(subject).replace(', ', '')
         exercises = r'\d' if exercise == 'all' else str(exercise).replace(', ', '')
-        match = r'\AS{}+_.*E{}.*\.mat\Z'.format(subjects, exercises)
+        match = r'\AS{}_.*E{}.*\.mat\Z'.format(subjects, exercises)
 
         for root, dirs, files in os.walk(folder):
             for file in files:
@@ -121,8 +121,7 @@ class NinaproDB:
 
 
 DB = NinaproDB()
-DB.readDataBase(r'C:\Users\Mark\Downloads\Datbase 1', 'all', '1')
-
+DB.readDataBase(r'C:\Users\Mark\Downloads\Datbase 1', '1\d', '1')
 
 print(DB)
 
@@ -171,11 +170,12 @@ model = Sequential()
 # model.add(Dense(num_classes, activation='softmax'))
 
 ## PAPER 3 ##
+model.add(Conv2D(32, kernel_size=5, activation='relu', input_shape=(25,10,1), padding='same'))
 model.add(Conv2D(32, kernel_size=3, activation='relu', input_shape=(25,10,1), padding='same'))
-# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
 model.add(Conv2D(64, kernel_size=3, activation='relu', padding='same'))
-# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
 model.add(Flatten())
 model.add(Dense(num_classes, activation='softmax'))
@@ -191,7 +191,7 @@ model.fit(
     TrainX,
     to_categorical(TrainY),
     epochs=30,
-    batch_size=128,
+    batch_size=64,
     validation_data=(ValidX, to_categorical(ValidY)),
     shuffle=True
 )
