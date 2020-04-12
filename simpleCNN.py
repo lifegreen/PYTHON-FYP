@@ -200,7 +200,7 @@ model.fit(
 # Save/Load weights
 # datetime object containing current date and time
 now = datetime.now()
-dt_string = now.strftime("%d_%m_%Y_%H_%M")
+dt_string = now.strftime("Trained Wieghts/%d_%m_%Y_%H_%M")
 model.save_weights('%s.h5' % dt_string)
 
 
