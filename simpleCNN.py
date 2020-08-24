@@ -68,6 +68,8 @@ class NinaproDB:
         sub    = dataset['subject'].item() - 1
         rep    = dataset['rerepetition']
 
+        signal = self.preprocess(signal)
+
         # Divide signal into time windows
         # length = (len(signal) // winSize) * winSize
         # self.windows = [signal[i : i + self.winSize] for i in range(0, len(signal), step)]
@@ -89,6 +91,15 @@ class NinaproDB:
             # print(rep[start][0])
             # print(labels[start][0])
             # print()
+
+    def preprocess(self, signal):
+        # For each channel subtract the mean
+        mean = np.mean(signal)
+        for i in range(signal.shape[1]):
+#             mean = np.mean(signal[:,i])
+            signal[:,i] -= mean
+
+        return signal
 
 
     def prepareData(self, ratio):
@@ -124,7 +135,7 @@ DB.readDataBase(r'C:\Users\Mark\Downloads\Datbase 1', '1\d', '1')
 
 print(DB)
 
-[TrainX, TrainY , ValidX, ValidY] = DB.prepareData(0.3)
+[TrainX, TrainY , ValidX, ValidY] = DB.prepareData(0.5 )
 print(list(map(len, [TrainX, TrainY , ValidX, ValidY])))
 
 # results, clf = gumpy.classify('SVM', X_train, Y_train, X_test, Y_test)

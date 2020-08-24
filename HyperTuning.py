@@ -298,7 +298,7 @@ class NinaproDB:
 ## IMPORT DATA ##
 
 DB = NinaproDB()
-DB.readDataBase(r'C:\Users\Mark\Downloads\Database 1', [1,7], 1)
+DB.readDataBase(r'Database 1', [1,7], 1)
 
 print(DB)
 
@@ -389,7 +389,7 @@ class CNNHyperModel(HyperModel):
         # optimizer
         learning_rate = hp.Choice('Learning_rate', values=[0.01, 0.001], default=0.001)
 
-        optimizer = hp.Choice('Optimizer', values=['a', 'b', 'c'], default = 'a')
+        optimizer = hp.Choice('Optimizer', values=['adam', 'SGD'])
 
         if optimizer == 'a':
             optimizer = optimizers.Adam(learning_rate=learning_rate)
@@ -416,7 +416,7 @@ hypermodel = CNNHyperModel(input_shape=INPUT_SHAPE, num_classes=NUM_CLASSES)
 tuner = Hyperband(
     hypermodel,
     max_epochs=HYPERBAND_MAX_EPOCHS,
-    objective='val_acc',
+    objective='val_accuracy',
 #     seed=SEED,
     executions_per_trial=EXECUTION_PER_TRIAL,
     directory='hyperband',

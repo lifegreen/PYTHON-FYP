@@ -9,11 +9,11 @@ from scipy.signal import filtfilt, butter
 
 from datetime import datetime
 
-from keras.models import Sequential
-from keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Dense, Flatten, BatchNormalization, Dropout
-from keras.utils import to_categorical
-from keras import optimizers
-from keras.regularizers import l1, l2
+from tensorflow.keras import optimizers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D, Dense, Flatten, BatchNormalization, Dropout
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.regularizers import l1, l2
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -22,7 +22,7 @@ from sklearn.metrics import confusion_matrix
 class NinaproDB:
     def __init__(self, fs):
         self.winSize = int(0.256 * fs)
-        self.step = int(0.032 * fs)
+        self.step = int(0.064 * fs)
         print('winSize:', self.winSize)
         print('step:', self.step)
 
@@ -74,15 +74,6 @@ class NinaproDB:
         print('Reading:', file)
         dataset = loadmat(file)
         signal = dataset['emg']
-
-#         for c in range(signal.shape[1]):
-#             signal[:,c] = filtfilt(self.b, self.a, signal[:,c])
-#             X = signal
-#             X[:,c] /= max(abs(X[:,c]))
-#             X[:,c] += 10*c
-
-#         plt.figure()
-#         plt.plot(X)
 
         # By default this returns list of lists, each with a single scalar.
         # So np.squeeze is used to turn it into a vector.
@@ -159,13 +150,13 @@ class NinaproDB:
 
 ## IMPORT DATA ##
 
-DB = NinaproDB(100)
-DB.readDataBase(r'C:\Users\Mark\Downloads\Database 1', 1, 1)
+DB = NinaproDB(2000)
+DB.readDataBase(r'C:\Users\Mark\Downloads\Database 2', 'all', 1)
 
 print(DB)
 
-# [TrainX, TrainY, ValidX, ValidY] = DB.splitByCategory('rep', [2, 5, 7])
-[TrainX, TrainY, ValidX, ValidY] = DB.splitByRatio(0.33)
+[TrainX, TrainY, ValidX, ValidY] = DB.splitByCategory('rep', [2, 5, 7])
+# [TrainX, TrainY, ValidX, ValidY] = DB.splitByRatio(0.33)
 
 lengths = list(map(len, [TrainX, TrainY, ValidX, ValidY]))
 print(lengths)
@@ -206,39 +197,41 @@ model = Sequential()
 # model.add(Dense(num_classes, activation='softmax'))
 
 ## PAPER 2 ##
-# decay = l2(0.0005)
-# model.add(Conv2D(32, kernel_size=(1,input_shape[1]), activation='relu', input_shape=input_shape, padding='same', kernel_regularizer=decay))
+decay = l2(0.0005)
+model.add(Conv2D(32, kernel_size=(1,input_shape[1]), activation='relu', input_shape=input_shape, padding='same', kernel_regularizer=decay))
 
-# model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same', kernel_regularizer=decay))
-# model.add(AveragePooling2D(pool_size=2))
+model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same', kernel_regularizer=decay))
+model.add(AveragePooling2D(pool_size=3))
 
-# model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same', kernel_regularizer=decay))
-# model.add(AveragePooling2D(pool_size=2))
+model.add(Conv2D(64, kernel_size=5, activation='relu', padding='same', kernel_regularizer=decay))
+model.add(AveragePooling2D(pool_size=3))
 
-# model.add(Conv2D(64, kernel_size=(5,1), activation='relu', padding='same', kernel_regularizer=decay))
-# model.add(Conv2D(64, kernel_size=1, activation='relu', padding='same', kernel_regularizer=decay))
-# model.add(Flatten())
-# model.add(Dense(num_classes, activation='softmax', kernel_regularizer=decay))
+model.add(Conv2D(64, kernel_size=(5,1), activation='relu', padding='same', kernel_regularizer=decay))
+model.add(Conv2D(64, kernel_size=1, activation='relu', padding='same', kernel_regularizer=decay))
+model.add(Flatten())
+model.add(Dense(num_classes, activation='softmax', kernel_regularizer=decay))
 
 ## PAPER 3 ##
 # model.add(BatchNormalization(input_shape=input_shape))
-model.add(Conv2D(32, kernel_size=5, activation='relu',  padding='same', input_shape=input_shape))
-model.add(BatchNormalization())
 
+# model.add(Conv2D(32, kernel_size=5, activation='relu',  padding='same', input_shape=input_shape, use_bias=False))
+
+# model.add(BatchNormalization())
+# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
+# model.add(Dropout(.2))
+
+# model.add(Conv2D(32, kernel_size=3, activation='relu', padding='same', use_bias=False))
+
+# model.add(BatchNormalization())
 # model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
-model.add(Conv2D(64, kernel_size=3, activation='relu', padding='same'))
-model.add(BatchNormalization())
-model.add(Dropout(.2))
-
-# model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
 # model.add(Conv2D(64, kernel_size=3, activation='relu', padding='same'))
 # model.add(MaxPooling2D(pool_size=(2, 2), strides=2))
 
-model.add(Flatten())
-model.add(Dropout(.5))
-model.add(Dense(num_classes, activation='softmax'))
+# model.add(Flatten())
+# model.add(Dropout(.5))
+# model.add(Dense(num_classes, activation='softmax'))
 
 model.summary()
 
@@ -259,12 +252,6 @@ model.fit(
 )
 
 
-# Save/Load weights
-now = datetime.now() # datetime object containing current date and time
-dt_string = now.strftime("Trained Wieghts/%d_%m_%Y_%H_%M")
-model.save_weights('%s.h5' % dt_string)
-
-
 # Predict on the first 5 test images.
 predictions = np.argmax(model.predict(ValidX), axis=1)
 
@@ -279,6 +266,14 @@ correct = predictions[ValidY==predictions]
 print('Unique (pred):\t\t', set(predictions))
 print('Unique (correct):\t', set(correct))
 
+accuracy = (np.count_nonzero(ValidY==predictions)/ len(ValidY)) * 100
+print('Accuracy = %.2f%%' % accuracy)
+
+# Save/Load weights
+now = datetime.now() # datetime object containing current date and time
+dt_string = now.strftime("Trained Wieghts/({:.0f}%%) HypNetTest %d-%m-%y_%H-%M".format(accuracy))
+model.save_weights('{}.h5'.format(dt_string))
+
 cm = confusion_matrix(ValidY, predictions, normalize='true')
 
 print(cm)
@@ -290,5 +285,5 @@ plt.ylabel("True labels")
 plt.title('Confusion matrix ')
 plt.colorbar()
 
-plt.savefig('%s.png' % dt_string)
+plt.savefig('{}.png'.format(dt_string))
 plt.show()
